@@ -1,0 +1,174 @@
+#version 430 core
+#extension GL_NV_uniform_buffer_std430_layout : enable
+layout (local_size_x = 250, local_size_y = 1, local_size_z = 1) in;
+
+#define PI 3.1415926535897932384626433832795028841971693993751058209749445923078164062
+
+struct Particle
+{
+	vec3 pos;
+	float rotation;
+    float angle;
+	float height;
+	float angleVel;
+	float brightness;
+	float temp;
+};
+
+layout(std140, binding = 2) uniform Parameters {
+    float inExc;
+    float outExc;
+    float offset;
+    float maxRad;
+    float core;
+    float inExcDiv;
+    float outExcDiv;
+    float bugleRad;
+    float speed;
+    unsigned int numStarts;
+    float maxStarBrightness;
+    float minStarBrightness;
+    float maxDustBrightness;
+    float minDustBrightness;
+	float maxTemp;
+    float minTemp;
+};
+
+layout(std140, binding = 4) buffer Particles
+{
+	Particle particles[];
+};
+
+#define RANDOM_IA 16807
+#define RANDOM_IM 2147483647
+#define RANDOM_AM 1.0 / float(RANDOM_IM)
+#define RANDOM_IQ 127773
+#define RANDOM_IR 2836
+#define RANDOM_MASK 123459876
+
+int _SEED = 0;
+
+void srand_cycle()
+{
+	_SEED ^= RANDOM_MASK;
+	int k = _SEED / RANDOM_IQ;
+	_SEED = RANDOM_IA * (_SEED - k * RANDOM_IQ) - RANDOM_IR * k;
+
+	if (_SEED < 0)
+		_SEED += RANDOM_IM;
+
+	_SEED ^= RANDOM_MASK;
+}
+
+void srand_set(int seed)
+{
+	_SEED = seed;
+	srand_cycle();
+}
+
+float rand()
+{
+	srand_cycle();
+	return RANDOM_AM * _SEED;
+}
+
+float ease_in_exp(float x)
+{
+    return x <= 0.0 ? 0.0 : pow(2, 10.0 * x - 10.0);
+}
+
+float ease_in_circ(float x)
+{
+	return x >= 1.0 ? 1.0 : 1.0 - sqrt(1.0 - x * x);
+}
+
+float rand_height()
+{
+	float r = ease_in_circ(rand());
+	if(rand() < 0.5)
+		r *= -1;
+
+	return 100.0f + (100.0f * 0.5) * r; 
+}
+
+float rand_height_bulge(float rad)
+{
+	float r = ease_in_circ(rand());
+	if(rand() < 0.5)
+		r *= -1;
+
+	float bound = (100.0f * 0.5) + (100.0f * 0.5) * cos(PI * rad / bugleRad);
+
+	return 100.0f + bound * r;
+}
+
+float rand_height_bulge_dust(float rad)
+{
+	float r = ease_in_circ(rand());
+	if(rand() < 0.5)
+		r *= -1;
+
+	float bound = (100 * 0.5) * cos(PI * rad / bugleRad);
+
+	return 100 + bound * r;
+}
+
+void main()
+{
+	srand_set(int(gl_GlobalInvocationID.x));
+	Particle particle;
+	particle.temp = 0.0f;
+	if(gl_GlobalInvocationID.x < numStarts) {
+		particle.pos.x = ease_in_exp(rand()) * maxRad;
+
+		if (particle.pos.x <= core) {
+			particle.pos.y = abs((((particle.pos.x / core) * (inExc)) - inExcDiv) * particle.pos.x);
+		}
+		else {
+			particle.pos.y = (((particle.pos.x / maxRad) * (outExc)) + outExcDiv) * particle.pos.x;
+		}
+
+
+		particle.brightness = minStarBrightness + (maxStarBrightness - minStarBrightness) * rand();
+
+		particle.rotation = (particle.pos.x / maxRad) * offset;
+		particle.angle = rand() * 2 * PI;
+		particle.angleVel = -speed * sqrt(1.0 / particle.pos.x);
+		particle.temp = minTemp + (maxTemp - minTemp) * rand();
+		if(particle.pos.x < bugleRad)
+		{
+			particle.height = rand_height_bulge(particle.pos.x);
+		}else{
+			particle.height = rand_height();
+		}
+	}else{
+
+		if(gl_GlobalInvocationID.x % 2 == 0)
+			particle.pos.x = rand() * maxRad;
+		else
+			particle.pos.x = ease_in_exp(rand()) * maxRad;
+
+		if (particle.pos.x <= core) {
+			particle.pos.y = abs((((particle.pos.x / core) * (inExc)) - inExcDiv) * particle.pos.x);
+		}
+		else {
+			particle.pos.y = (((particle.pos.x / maxRad) * (outExc)) + outExcDiv) * particle.pos.x;
+		}
+
+		particle.temp = 4200 + 2.0 * particle.pos.x;
+		particle.brightness = minDustBrightness + (maxDustBrightness - minDustBrightness) * rand();
+
+		particle.rotation = (particle.pos.x / maxRad) * offset;
+		particle.angle = rand() * 2 * PI;
+		particle.angleVel = -speed * sqrt(1.0 / particle.pos.x);
+
+
+		if(particle.pos.x < bugleRad)
+			{
+				particle.height = rand_height_bulge_dust(particle.pos.x);
+			}else{
+				particle.height = 100.0f;
+			}
+	}
+	particles[gl_GlobalInvocationID.x] = particle;
+}
