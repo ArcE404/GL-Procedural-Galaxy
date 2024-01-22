@@ -97,7 +97,7 @@ void SphereInit();
 
 const int VIEW_PORT_WIDTH = 1920;
 const int VIEW_PORT_HEIGHT = 1080;
-Camera* camera = new Camera(glm::vec3(0.0f, 50000, -50000.f), 3000);
+Camera* camera = new Camera(glm::vec3(0.0f, 50000, 50000.f), 3000);
 
 WindowsUtil* windowUtil = new WindowsUtil();
 
@@ -169,8 +169,8 @@ int main()
 
     ComputeParameters cParam;
     cParam.inExc = 0.25;
-    cParam.outExc = 0.25;
-    cParam.offset = 5.0;
+    cParam.outExc = 0.20;
+    cParam.offset = 4.5;
     cParam.core = 600;
     cParam.maxRad = 1000;
     cParam.inExcDiv = 1 - cParam.inExc;
@@ -182,7 +182,7 @@ int main()
     cParam.maxDustBrightness = 0.005f;
     cParam.maxStarBrightness = 0.1f;
     cParam.minStarBrightness = 0.5f;
-    cParam.maxTemp = 6000;
+    cParam.maxTemp = 7450;
     cParam.minTemp = 4500;
     //cParam.dustTemp = 8000;
 

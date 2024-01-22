@@ -155,7 +155,7 @@ void main()
 			particle.pos.y = (((particle.pos.x / maxRad) * (outExc)) + outExcDiv) * particle.pos.x;
 		}
 
-		particle.temp = 4200 + 2.0 * particle.pos.x;
+		particle.temp = 4800 + 2.0 * particle.pos.x; 
 		particle.brightness = minDustBrightness + (maxDustBrightness - minDustBrightness) * rand();
 
 		particle.rotation = (particle.pos.x / maxRad) * offset;
